@@ -1,0 +1,83 @@
+---
+title: "BF% analysis"
+output:
+  html_document:
+    df_print: paged
+  pdf_document: default
+date: "2023-03-16"
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(warning = FALSE, message = FALSE, echo = TRUE)
+```
+
+
+
+
+```{r, echo = FALSE }
+
+library(MASS)
+library(tidyverse)
+library(ggplot2)
+library(GGally)
+library(glmnet) ###Lasso
+library (pls)   ###PCA
+library(openxlsx)
+library(rstatix)
+library(xtable)
+library(kableExtra)  ## Create table in Rmarkdown
+library(arsenal)  #descriptive statistic
+
+```
+Loading dataset and selecting variables 
+
+```{r}
+load(file = "salamat")
+dsl  = salamat %>% select("sex","age", "weight", "height", "wc", "hc", "ac", "BF%", "tricept(left)", "tricept(right)",
+                          "abdominal(left)", "abdominal(right)", "subscapular(left)", "subscapular(right)",
+                          "obesity(family history)")%>%
+                           rowwise() %>%
+                           mutate(tricept = mean(c(`tricept(left)`, `tricept(right)`))) %>%
+                           mutate(abdominal = mean(c(`abdominal(left)`, `abdominal(right)`))) %>%
+                           mutate(clavicle = mean(c(`subscapular(left)`, `subscapular(right)`))) %>%
+                           mutate(gender = case_when(sex == 2 ~ "female",
+                                                     sex == 1 ~ "male")) %>%
+                           mutate(bmi = weight/((height/100)^2)) %>%
+                           select(gender, age, bmi, BF = "BF%", wc, hc, ac, tricept, abdominal, clavicle) %>%
+  drop_na()
+
+
+
+```
+Descriptive Statistics
+```{r, results="asis"}
+tab1 = tableby(gender ~ ., data = dsl, numeric.stats = c("mean","q1q3", "sd"))
+summary(tab1)
+
+```
+Grouping by gender (outliers were deleted based on histogram plot)
+```{r}
+mdsl = dsl %>% filter(gender == "male") %>% #n = 426
+               filter(!age >19.5, bmi <50 & bmi >15, BF >0 & BF <50,
+                      wc>50, hc>70, ac<40 & ac>16,
+                      tricept<40, abdominal<60 & abdominal >5, clavicle<50 ) %>%
+               mutate(BFsq = BF^2) 
+
+fdsl = dsl %>% filter(gender == "female") %>%     ##n = 674
+               filter(!age>19.5, !bmi>40 & bmi >15, BF<50 & BF>5,
+                      wc>50, hc >70 & hc <115, ac<38 & ac >10,
+                      tricept<40 & tricept >5, abdominal<45, clavicle<41 & clavicle>5) %>%
+               mutate(BFsq = BF^2) 
+
+newdsl = rbind(fdsl, mdsl)
+```
+
+```{r}
+ x <- c(1,2,3,4,5,6) 
+ y <- c(1,2,3,4,5,6) 
+ plot(x,y) 
+```   
+   
+
+
+
